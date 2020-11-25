@@ -69,11 +69,13 @@ BFMap <- ggmap(basemap) +
   labs(title="Buffalo Basemap")
 BFMap
 
+#Color Palette
+palette_9_colors <- c("#0DA3A0","#2999A9","#458FB2","#6285BB","#7E7CC4","#9A72CD","#B768D6","#D35EDF","#F055E9")
 # 2017 - 2018 Assessment Roll Plot
 SingleFam17 <- ggmap(basemap) + 
   geom_point(data = Buffalo_17, aes(x = LONGITUDE, y = LATITUDE, color = as.factor(TOTAL.VALUE)), 
              size = .25, alpha = 0.6) +
-  scale_color_brewer(palette = "Greens") +
+  scale_fill_manual(values = palette_9_colors) +
   labs(title="Distribution of Buffalo Home Prices",
        subtitle="Property Prices (2017 - 2018)",
        caption="Open Data Buffalo")
@@ -83,7 +85,7 @@ SingleFam17
 SingleFam20 <- ggmap(basemap) + 
   geom_point(data = Buffalo_20, aes(x = LONGITUDE, y = LATITUDE, color = as.factor(TOTAL.VALUE)), 
              size = .25, alpha = 0.6) +
-  scale_color_brewer(palette = "Greens") +
+  scale_fill_brewer(palette = "Greens") +
   labs(title="Distribution of Buffalo Home Prices",
        subtitle="Property Prices (2019 - 2020)",
        caption="Open Data Buffalo")
