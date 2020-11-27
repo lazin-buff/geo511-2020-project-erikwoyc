@@ -49,11 +49,9 @@ Plot_2019 <- ggplot(data = Buffalo_20, mapping = aes(x = TOTAL.VALUE)) +
        caption="Source: Buffalo Open Data") + scale_x_continuous() + scale_y_continuous()
 plot(Plot_2019)
 
-#Due to Outliers; Data greater than 2.5 STDs was removed
-Buf17 <- Buffalo_17[which(Buffalo_17$TOTAL.VALUE < mean(Buffalo_17$TOTAL.VALUE) +
-                            (2.5 * sd(Buffalo_17$TOTAL.VALUE))), ]
-Buf20 <- Buffalo_20[which(Buffalo_20$TOTAL.VALUE < mean(Buffalo_20$TOTAL.VALUE) +
-                            (2.5 * sd(Buffalo_20$TOTAL.VALUE))), ]
+#Data is transformed using Natural Log for Map Visualization
+Buffalo_17$logprice <- log(Buffalo_17$TOTAL.VALUE)
+Buffalo_20$logprice <- log(Buffalo_20$TOTAL.VALUE)
 
 #Buffalo Bounding Box
 Buffalo_bbox <- Buffalo_sp@bbox
@@ -69,22 +67,21 @@ BFMap <- ggmap(basemap) +
   labs(title="Buffalo Basemap")
 BFMap
 
-#Color Palette
-palette_9_colors <- c("#0DA3A0","#2999A9","#458FB2","#6285BB","#7E7CC4","#9A72CD","#B768D6","#D35EDF","#F055E9")
+
 # 2017 - 2018 Assessment Roll Plot
 SingleFam17 <- ggmap(basemap) + 
-  geom_point(data = Buffalo_17, aes(x = LONGITUDE, y = LATITUDE, color = as.factor(TOTAL.VALUE)), 
-             size = .25, alpha = 0.6) +
-  scale_fill_manual(values = palette_9_colors) +
+  geom_point(data = Buffalo_17, aes(x = LONGITUDE, y = LATITUDE, color = logprice, 
+             size = .25, alpha = 0.6)) +
+  scale_fill_brewer(palette = "Greens") +
   labs(title="Distribution of Buffalo Home Prices",
        subtitle="Property Prices (2017 - 2018)",
        caption="Open Data Buffalo")
 SingleFam17
 
-# 2017 - 2018 Assessment Roll Plot
+# 2019 - 2020 Assessment Roll Plot
 SingleFam20 <- ggmap(basemap) + 
-  geom_point(data = Buffalo_20, aes(x = LONGITUDE, y = LATITUDE, color = as.factor(TOTAL.VALUE)), 
-             size = .25, alpha = 0.6) +
+  geom_point(data = Buffalo_20, aes(x = LONGITUDE, y = LATITUDE, color = logprice, 
+             size = .25, alpha = 0.6)) +
   scale_fill_brewer(palette = "Greens") +
   labs(title="Distribution of Buffalo Home Prices",
        subtitle="Property Prices (2019 - 2020)",
