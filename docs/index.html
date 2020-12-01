@@ -9,12 +9,12 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Your name here" />
+<meta name="author" content="Erik Woyciesjes" />
 
 
-<title>My Final Project Template</title>
+<title>A Look at Single Family Housing Prices Across Buffalo</title>
 
-<script src="site_libs/jquery-1.12.4/jquery.min.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/simplex.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -28,14 +28,6 @@
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
 <script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
 <link href="site_libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
-<script src="site_libs/htmlwidgets-1.5.2/htmlwidgets.js"></script>
-<link href="site_libs/leaflet-1.3.1/leaflet.css" rel="stylesheet" />
-<script src="site_libs/leaflet-1.3.1/leaflet.js"></script>
-<link href="site_libs/leafletfix-1.0.0/leafletfix.css" rel="stylesheet" />
-<script src="site_libs/Proj4Leaflet-1.0.1/proj4-compressed.js"></script>
-<script src="site_libs/Proj4Leaflet-1.0.1/proj4leaflet.js"></script>
-<link href="site_libs/rstudio_leaflet-1.3.1/rstudio_leaflet.css" rel="stylesheet" />
-<script src="site_libs/leaflet-binding-2.0.3/leaflet.js"></script>
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css">
@@ -374,17 +366,16 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">My Final Project Template</h1>
-<h3 class="subtitle">Subtitle here if desired</h3>
-<h4 class="author">Your name here</h4>
+<h1 class="title toc-ignore">A Look at Single Family Housing Prices Across Buffalo</h1>
+<h3 class="subtitle">2017 - 2020</h3>
+<h4 class="author">Erik Woyciesjes</h4>
 
 </div>
 
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>[~ 200 words]</p>
-<p>Clearly stated background and questions / hypotheses / problems being addressed. Sets up the analysis in an interesting and compelling way.</p>
+<p>The purpose of this project is to look at single family housing in the City of Buffalo. Using the assessed values of single family properties (City Assessment Rolls), this project aims to examine the spatial distribution and percent change of single family housing prices across the city of Buffalo. To extend this study, median household prices within neighborhoods will also be calculated to potentially illuminate trends in the changes in price of single family homes across neighborhoods.</p>
 </div>
 <div id="materials-and-methods" class="section level1">
 <h1>Materials and methods</h1>
@@ -410,213 +401,1545 @@ div.tocify {
 <pre><code>## [1] 3</code></pre>
 <p>Load any required packages in a code chunk (you may need to install some packages):</p>
 <pre class="r"><code>library(tidyverse)
-library(leaflet)
-library(kableExtra)
+library(ggplot2)
+library(ggmap)
+library(maptools)
+library(ggthemes)
+library(rgeos)
+library(broom)
+library(plyr)
+library(dplyr)
+library(grid)
+library(gridExtra)
+library(reshape2)
+library(scales)
+library(sp)
+library(sf)
+library(rgdal)
+library(RColorBrewer)
 knitr::opts_chunk$set(cache=TRUE)  # cache the results for quick compiling</code></pre>
 <div id="download-and-clean-all-required-data" class="section level2">
 <h2>Download and clean all required data</h2>
-<pre class="r"><code>n=20
-data=data.frame(x=runif(n,-180,180),
-                y=runif(n,-60,60),
-                size = runif(n, 5, 20),
-                category = factor(
-                  sample(letters[1:5], n, replace = TRUE)
-                  ),
-                value = rnorm(n))</code></pre>
-<pre class="r"><code>data %&gt;% 
-  slice(1:10) %&gt;% #show only 1:n rows
-  kable(digits=2,align=&quot;c&quot;)%&gt;% #make table and round to two digits
+<pre class="r"><code># 2017 - 2019 Buffalo Assessment Roll
+Parcel17 &lt;- read.csv(file = &quot;https://raw.githubusercontent.com/geo511-2020/geo511-2020-project-erikwoyc/master/2017-2018_Assessment_Roll.csv&quot;)
+SingleFam_propclass &lt;- c(&quot;210&quot;, &quot;215&quot;, &quot;240&quot;, &quot;241&quot;, &quot;250&quot;, &quot;270&quot;)
+Buffalo_17 &lt;- filter(Parcel17, PROPERTY.CLASS %in% SingleFam_propclass)
+
+# 2019 - 2020 Buffalo Assessment Roll
+Parcel20 &lt;- read.csv(file = &quot;https://raw.githubusercontent.com/geo511-2020/geo511-2020-project-erikwoyc/master/2019-2020_Assessment_Roll.csv&quot;)
+SingleFam_propclass &lt;- c(&quot;210&quot;, &quot;215&quot;, &quot;240&quot;, &quot;241&quot;, &quot;250&quot;, &quot;270&quot;)
+Buffalo_20 &lt;- filter(Parcel20, PROPERTY.CLASS %in% SingleFam_propclass)
+
+# Neighborhood Shapefile
+Neighborhood_URL &lt;- &quot;https://data.buffalony.gov/api/geospatial/q9bk-zu3p?method=export&amp;format=GeoJSON&quot;
+Buffalo_Neighborhoods &lt;- st_read(dsn = Neighborhood_URL)</code></pre>
+<pre><code>## Reading layer `OGRGeoJSON&#39; from data source `https://data.buffalony.gov/api/geospatial/q9bk-zu3p?method=export&amp;format=GeoJSON&#39; using driver `GeoJSON&#39;
+## Simple feature collection with 35 features and 11 fields
+## geometry type:  MULTIPOLYGON
+## dimension:      XY
+## bbox:           xmin: -78.91246 ymin: 42.82603 xmax: -78.79504 ymax: 42.96641
+## geographic CRS: WGS 84</code></pre>
+<pre class="r"><code>Buffalo_sp &lt;- as_Spatial(Buffalo_Neighborhoods)</code></pre>
+<pre class="r"><code>#Snapshot of Assessment Data from 2017 - 2018
+Parcel17 %&gt;% 
+  slice(1:10) %&gt;% 
+  kable(digits=2,align=&quot;c&quot;) %&gt;% 
   kable_styling(bootstrap_options = 
-                  c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)) #apply other formatting</code></pre>
+                  c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)) </code></pre>
 <table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
 <th style="text-align:center;">
-x
+SBL
 </th>
 <th style="text-align:center;">
-y
+TAX.DISTRICT
 </th>
 <th style="text-align:center;">
-size
+PRINT.KEY
 </th>
 <th style="text-align:center;">
-category
+FRONT
 </th>
 <th style="text-align:center;">
-value
+DEPTH
+</th>
+<th style="text-align:center;">
+PROPERTY.CLASS
+</th>
+<th style="text-align:center;">
+PROP.CLASS.DESCRIPTION
+</th>
+<th style="text-align:center;">
+PREVIOUS.PROPERTY.CLASS
+</th>
+<th style="text-align:center;">
+OWNER1
+</th>
+<th style="text-align:center;">
+OWNER2
+</th>
+<th style="text-align:center;">
+MAIL1
+</th>
+<th style="text-align:center;">
+MAIL2
+</th>
+<th style="text-align:center;">
+MAIL3
+</th>
+<th style="text-align:center;">
+MAIL4
+</th>
+<th style="text-align:center;">
+HOUSE.NUMBER
+</th>
+<th style="text-align:center;">
+STREET
+</th>
+<th style="text-align:center;">
+ADDRESS
+</th>
+<th style="text-align:center;">
+CITY
+</th>
+<th style="text-align:center;">
+STATE
+</th>
+<th style="text-align:center;">
+ZIP.CODE..5.DIGIT.
+</th>
+<th style="text-align:center;">
+ZIP.CODE..4.DIGIT.
+</th>
+<th style="text-align:center;">
+DEED.BOOK
+</th>
+<th style="text-align:center;">
+DEED.PAGE
+</th>
+<th style="text-align:center;">
+DEED.DATE
+</th>
+<th style="text-align:center;">
+ROLL.SECTION
+</th>
+<th style="text-align:center;">
+LAND.VALUE
+</th>
+<th style="text-align:center;">
+TOTAL.VALUE
+</th>
+<th style="text-align:center;">
+SALE.PRICE
+</th>
+<th style="text-align:center;">
+YEAR.BUILT
+</th>
+<th style="text-align:center;">
+TOTAL.LIVING.AREA
+</th>
+<th style="text-align:center;">
+OVERALL.CONDITION
+</th>
+<th style="text-align:center;">
+BUILDING.STYLE
+</th>
+<th style="text-align:center;">
+HEAT.TYPE
+</th>
+<th style="text-align:center;">
+BASEMENT.TYPE
+</th>
+<th style="text-align:center;">
+X..OF.FIREPLACES
+</th>
+<th style="text-align:center;">
+X..OF.BEDS
+</th>
+<th style="text-align:center;">
+X..OF.BATHS
+</th>
+<th style="text-align:center;">
+COUNCIL.DISTRICT
+</th>
+<th style="text-align:center;">
+POLICE.DISTRICT
+</th>
+<th style="text-align:center;">
+CENSUS.TRACT
+</th>
+<th style="text-align:center;">
+CENSUS.BLOCK.GROUP
+</th>
+<th style="text-align:center;">
+CENSUS.BLOCK
+</th>
+<th style="text-align:center;">
+NEIGHBORHOOD
+</th>
+<th style="text-align:center;">
+LATITUDE
+</th>
+<th style="text-align:center;">
+LONGITUDE
+</th>
+<th style="text-align:center;">
+LOCATION
 </th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align:center;">
-77.18
+1.12e+15
 </td>
 <td style="text-align:center;">
--57.37
+147012
 </td>
 <td style="text-align:center;">
-10.87
+112.10-2-3
 </td>
 <td style="text-align:center;">
-b
+45.00
 </td>
 <td style="text-align:center;">
--0.77
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--76.65
+0
 </td>
 <td style="text-align:center;">
--49.42
+710
 </td>
 <td style="text-align:center;">
-8.74
+MANUFACTURING &amp; PROCESSING
 </td>
 <td style="text-align:center;">
-c
+710
 </td>
 <td style="text-align:center;">
--0.52
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--17.51
+MEGTEX, INC.
 </td>
 <td style="text-align:center;">
-38.86
 </td>
 <td style="text-align:center;">
-7.39
 </td>
 <td style="text-align:center;">
-a
 </td>
 <td style="text-align:center;">
--0.18
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--114.81
+140 NORTH ST
 </td>
 <td style="text-align:center;">
-9.51
+BUFFALO, NY
 </td>
 <td style="text-align:center;">
-7.35
+160
 </td>
 <td style="text-align:center;">
-b
+BUD MILL
 </td>
 <td style="text-align:center;">
-0.61
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
-112.05
+160 BUD MILL
 </td>
 <td style="text-align:center;">
-10.53
+BUFFALO
 </td>
 <td style="text-align:center;">
-6.03
+NY
 </td>
 <td style="text-align:center;">
-e
+14206
 </td>
 <td style="text-align:center;">
-1.78
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
-101.46
+NA
 </td>
 <td style="text-align:center;">
--9.33
+11132
 </td>
 <td style="text-align:center;">
-8.44
+2524
 </td>
 <td style="text-align:center;">
-e
+7/23/2007
 </td>
 <td style="text-align:center;">
-0.36
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--95.94
+1
 </td>
 <td style="text-align:center;">
-27.53
+202600
 </td>
 <td style="text-align:center;">
-18.45
+825000
 </td>
 <td style="text-align:center;">
-b
+285664
 </td>
 <td style="text-align:center;">
-0.32
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--66.89
+NA
 </td>
 <td style="text-align:center;">
-26.75
+0
 </td>
 <td style="text-align:center;">
-14.67
+NA
 </td>
 <td style="text-align:center;">
-c
+NA
 </td>
 <td style="text-align:center;">
--0.04
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0.0
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
 </td>
 </tr>
 <tr>
 <td style="text-align:center;">
-112.41
+NA
 </td>
 <td style="text-align:center;">
-36.88
+147013
 </td>
 <td style="text-align:center;">
-18.76
+132.08-1-6./A
 </td>
 <td style="text-align:center;">
-d
+287.00
 </td>
 <td style="text-align:center;">
-0.48
+400
+</td>
+<td style="text-align:center;">
+350
+</td>
+<td style="text-align:center;">
+URBAN RENEWAL VACANT LAND
+</td>
+<td style="text-align:center;">
+350
+</td>
+<td style="text-align:center;">
+FORT SCHUYLER MANAGEMENT
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+CORPORATION
+</td>
+<td style="text-align:center;">
+257 FULLER RD
+</td>
+<td style="text-align:center;">
+ALBANY, NY
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+BUFFALO RR SOUTH
+</td>
+<td style="text-align:center;">
+2 BUFFALO RR SOUTH
+</td>
+<td style="text-align:center;">
+BUFFALO
+</td>
+<td style="text-align:center;">
+NY
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+11272
+</td>
+<td style="text-align:center;">
+3307
+</td>
+<td style="text-align:center;">
+9/9/9999
+</td>
+<td style="text-align:center;">
+8
+</td>
+<td style="text-align:center;">
+6900
+</td>
+<td style="text-align:center;">
+6900
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0.0
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
 </td>
 </tr>
 <tr>
 <td style="text-align:center;">
--141.54
+8.93e+14
 </td>
 <td style="text-align:center;">
--13.92
+147010
 </td>
 <td style="text-align:center;">
-7.53
+89.28-4-1
 </td>
 <td style="text-align:center;">
-b
+283.28
 </td>
 <td style="text-align:center;">
-0.87
+0
+</td>
+<td style="text-align:center;">
+841
+</td>
+<td style="text-align:center;">
+MOTOR VEHICLE
+</td>
+<td style="text-align:center;">
+841
+</td>
+<td style="text-align:center;">
+N.F.T.A.
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+PO BOX 5008
+</td>
+<td style="text-align:center;">
+BUFFALO, NY
+</td>
+<td style="text-align:center;">
+2646
+</td>
+<td style="text-align:center;">
+MAIN
+</td>
+<td style="text-align:center;">
+2646 MAIN
+</td>
+<td style="text-align:center;">
+BUFFALO
+</td>
+<td style="text-align:center;">
+NY
+</td>
+<td style="text-align:center;">
+14214
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+7475
+</td>
+<td style="text-align:center;">
+493
+</td>
+<td style="text-align:center;">
+9/9/9999
+</td>
+<td style="text-align:center;">
+8
+</td>
+<td style="text-align:center;">
+77700
+</td>
+<td style="text-align:center;">
+22440000
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0.0
+</td>
+<td style="text-align:center;">
+MASTEN
+</td>
+<td style="text-align:center;">
+District D
+</td>
+<td style="text-align:center;">
+40.01
+</td>
+<td style="text-align:center;">
+5
+</td>
+<td style="text-align:center;">
+5001
+</td>
+<td style="text-align:center;">
+Parkside
+</td>
+<td style="text-align:center;">
+42.94
+</td>
+<td style="text-align:center;">
+-78.84
+</td>
+<td style="text-align:center;">
+(42.93973696004812, -78.83864068992023)
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+9.04e+14
+</td>
+<td style="text-align:center;">
+147010
+</td>
+<td style="text-align:center;">
+90.37-3-31
+</td>
+<td style="text-align:center;">
+30.00
+</td>
+<td style="text-align:center;">
+5
+</td>
+<td style="text-align:center;">
+311
+</td>
+<td style="text-align:center;">
+RESIDENTIAL VACANT LAND
+</td>
+<td style="text-align:center;">
+311
+</td>
+<td style="text-align:center;">
+CITY OF BUFFALO
+</td>
+<td style="text-align:center;">
+PERFECTING TITLE
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+192 VICTORIA
+</td>
+<td style="text-align:center;">
+BUFFALO, NY
+</td>
+<td style="text-align:center;">
+99999
+</td>
+<td style="text-align:center;">
+VICTORIA
+</td>
+<td style="text-align:center;">
+99999 VICTORIA
+</td>
+<td style="text-align:center;">
+BUFFALO
+</td>
+<td style="text-align:center;">
+NY
+</td>
+<td style="text-align:center;">
+14214
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+7669
+</td>
+<td style="text-align:center;">
+643
+</td>
+<td style="text-align:center;">
+9/9/9999
+</td>
+<td style="text-align:center;">
+8
+</td>
+<td style="text-align:center;">
+400
+</td>
+<td style="text-align:center;">
+400
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0.0
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+1.00e+15
+</td>
+<td style="text-align:center;">
+147006
+</td>
+<td style="text-align:center;">
+100.24-3-41
+</td>
+<td style="text-align:center;">
+33.00
+</td>
+<td style="text-align:center;">
+90
+</td>
+<td style="text-align:center;">
+220
+</td>
+<td style="text-align:center;">
+TWO FAMILY DWELLING
+</td>
+<td style="text-align:center;">
+220
+</td>
+<td style="text-align:center;">
+MP DEVELOPMENT LLC
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+31 HARVARD
+</td>
+<td style="text-align:center;">
+BUFFALO, NY
+</td>
+<td style="text-align:center;">
+31
+</td>
+<td style="text-align:center;">
+HARVARD
+</td>
+<td style="text-align:center;">
+31 HARVARD
+</td>
+<td style="text-align:center;">
+BUFFALO
+</td>
+<td style="text-align:center;">
+NY
+</td>
+<td style="text-align:center;">
+14209
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+11274
+</td>
+<td style="text-align:center;">
+2943
+</td>
+<td style="text-align:center;">
+11/14/2014
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+3000
+</td>
+<td style="text-align:center;">
+54500
+</td>
+<td style="text-align:center;">
+45780
+</td>
+<td style="text-align:center;">
+1918
+</td>
+<td style="text-align:center;">
+2302
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+8
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+4
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+6
+</td>
+<td style="text-align:center;">
+2.0
+</td>
+<td style="text-align:center;">
+ELLICOTT
+</td>
+<td style="text-align:center;">
+District D
+</td>
+<td style="text-align:center;">
+169
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+3000
+</td>
+<td style="text-align:center;">
+Elmwood Bidwell
+</td>
+<td style="text-align:center;">
+42.92
+</td>
+<td style="text-align:center;">
+-78.86
+</td>
+<td style="text-align:center;">
+(42.91848032397568, -78.86218043101054)
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+1.00e+15
+</td>
+<td style="text-align:center;">
+147007
+</td>
+<td style="text-align:center;">
+100.21-3-13
+</td>
+<td style="text-align:center;">
+41.00
+</td>
+<td style="text-align:center;">
+174
+</td>
+<td style="text-align:center;">
+482
+</td>
+<td style="text-align:center;">
+DOWNTOWN ROW TYPE (DETACHED)
+</td>
+<td style="text-align:center;">
+482
+</td>
+<td style="text-align:center;">
+MILLAFORD VENTURES LLC
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+818 ELMWOOD AVE FRNT RIGHT
+</td>
+<td style="text-align:center;">
+BUFFALO, NY
+</td>
+<td style="text-align:center;">
+818
+</td>
+<td style="text-align:center;">
+ELMWOOD
+</td>
+<td style="text-align:center;">
+818 ELMWOOD
+</td>
+<td style="text-align:center;">
+BUFFALO
+</td>
+<td style="text-align:center;">
+NY
+</td>
+<td style="text-align:center;">
+14222
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+11268
+</td>
+<td style="text-align:center;">
+4784
+</td>
+<td style="text-align:center;">
+8/19/2014
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+17900
+</td>
+<td style="text-align:center;">
+275000
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0.0
+</td>
+<td style="text-align:center;">
+DELAWARE
+</td>
+<td style="text-align:center;">
+District D
+</td>
+<td style="text-align:center;">
+65.01
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+1000
+</td>
+<td style="text-align:center;">
+Elmwood Bidwell
+</td>
+<td style="text-align:center;">
+42.92
+</td>
+<td style="text-align:center;">
+-78.88
+</td>
+<td style="text-align:center;">
+(42.9194355694349, -78.87709280994117)
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+1.00e+15
+</td>
+<td style="text-align:center;">
+147006
+</td>
+<td style="text-align:center;">
+100.24-3-24
+</td>
+<td style="text-align:center;">
+37.00
+</td>
+<td style="text-align:center;">
+199
+</td>
+<td style="text-align:center;">
+482
+</td>
+<td style="text-align:center;">
+DOWNTOWN ROW TYPE (DETACHED)
+</td>
+<td style="text-align:center;">
+482
+</td>
+<td style="text-align:center;">
+SILVER LEONARD
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+1762 MAIN ST
+</td>
+<td style="text-align:center;">
+BUFFALO, NY
+</td>
+<td style="text-align:center;">
+1766
+</td>
+<td style="text-align:center;">
+MAIN
+</td>
+<td style="text-align:center;">
+1766 MAIN
+</td>
+<td style="text-align:center;">
+BUFFALO
+</td>
+<td style="text-align:center;">
+NY
+</td>
+<td style="text-align:center;">
+14209
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+9080
+</td>
+<td style="text-align:center;">
+155
+</td>
+<td style="text-align:center;">
+9/9/9999
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+18400
+</td>
+<td style="text-align:center;">
+34500
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0.0
+</td>
+<td style="text-align:center;">
+ELLICOTT
+</td>
+<td style="text-align:center;">
+District D
+</td>
+<td style="text-align:center;">
+169
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+3000
+</td>
+<td style="text-align:center;">
+Elmwood Bidwell
+</td>
+<td style="text-align:center;">
+42.92
+</td>
+<td style="text-align:center;">
+-78.86
+</td>
+<td style="text-align:center;">
+(42.920238159038476, -78.85944723608432)
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+1.00e+15
+</td>
+<td style="text-align:center;">
+147006
+</td>
+<td style="text-align:center;">
+100.22-2-70
+</td>
+<td style="text-align:center;">
+33.00
+</td>
+<td style="text-align:center;">
+113
+</td>
+<td style="text-align:center;">
+210
+</td>
+<td style="text-align:center;">
+ONE FAMILY DWELLING
+</td>
+<td style="text-align:center;">
+210
+</td>
+<td style="text-align:center;">
+MCLOUGHLIN AUSTIN P
+</td>
+<td style="text-align:center;">
+MURRAY MARY ELIZABETH
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+706 AUBURN AVE
+</td>
+<td style="text-align:center;">
+BUFFALO, NY
+</td>
+<td style="text-align:center;">
+706
+</td>
+<td style="text-align:center;">
+AUBURN
+</td>
+<td style="text-align:center;">
+706 AUBURN
+</td>
+<td style="text-align:center;">
+BUFFALO
+</td>
+<td style="text-align:center;">
+NY
+</td>
+<td style="text-align:center;">
+14222
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+11058
+</td>
+<td style="text-align:center;">
+2073
+</td>
+<td style="text-align:center;">
+10/2/2003
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+30700
+</td>
+<td style="text-align:center;">
+210000
+</td>
+<td style="text-align:center;">
+182000
+</td>
+<td style="text-align:center;">
+1910
+</td>
+<td style="text-align:center;">
+2106
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+8
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+4
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+4
+</td>
+<td style="text-align:center;">
+2.1
+</td>
+<td style="text-align:center;">
+DELAWARE
+</td>
+<td style="text-align:center;">
+District D
+</td>
+<td style="text-align:center;">
+169
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+1002
+</td>
+<td style="text-align:center;">
+Elmwood Bidwell
+</td>
+<td style="text-align:center;">
+42.92
+</td>
+<td style="text-align:center;">
+-78.87
+</td>
+<td style="text-align:center;">
+(42.918710564992416, -78.87441389506147)
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+1.00e+15
+</td>
+<td style="text-align:center;">
+147007
+</td>
+<td style="text-align:center;">
+100.21-4-8.21
+</td>
+<td style="text-align:center;">
+41.00
+</td>
+<td style="text-align:center;">
+143
+</td>
+<td style="text-align:center;">
+482
+</td>
+<td style="text-align:center;">
+DOWNTOWN ROW TYPE (DETACHED)
+</td>
+<td style="text-align:center;">
+482
+</td>
+<td style="text-align:center;">
+GPK LLC
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+44 LONGLEAT PKWY
+</td>
+<td style="text-align:center;">
+SNYDER, NY
+</td>
+<td style="text-align:center;">
+758
+</td>
+<td style="text-align:center;">
+ELMWOOD
+</td>
+<td style="text-align:center;">
+758 ELMWOOD
+</td>
+<td style="text-align:center;">
+BUFFALO
+</td>
+<td style="text-align:center;">
+NY
+</td>
+<td style="text-align:center;">
+14222
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+10998
+</td>
+<td style="text-align:center;">
+2848
+</td>
+<td style="text-align:center;">
+9/9/9999
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+21400
+</td>
+<td style="text-align:center;">
+407500
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+0.0
+</td>
+<td style="text-align:center;">
+DELAWARE
+</td>
+<td style="text-align:center;">
+District D
+</td>
+<td style="text-align:center;">
+65.01
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+1005
+</td>
+<td style="text-align:center;">
+Elmwood Bidwell
+</td>
+<td style="text-align:center;">
+42.92
+</td>
+<td style="text-align:center;">
+-78.88
+</td>
+<td style="text-align:center;">
+(42.91772431790134, -78.87710775061227)
+</td>
+</tr>
+<tr>
+<td style="text-align:center;">
+1.00e+15
+</td>
+<td style="text-align:center;">
+147007
+</td>
+<td style="text-align:center;">
+100.21-3-9
+</td>
+<td style="text-align:center;">
+35.00
+</td>
+<td style="text-align:center;">
+86
+</td>
+<td style="text-align:center;">
+220
+</td>
+<td style="text-align:center;">
+TWO FAMILY DWELLING
+</td>
+<td style="text-align:center;">
+220
+</td>
+<td style="text-align:center;">
+REED BARBARA ANN
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+</td>
+<td style="text-align:center;">
+834 ELMWOOD
+</td>
+<td style="text-align:center;">
+BUFFALO, NY
+</td>
+<td style="text-align:center;">
+834
+</td>
+<td style="text-align:center;">
+ELMWOOD
+</td>
+<td style="text-align:center;">
+834 ELMWOOD
+</td>
+<td style="text-align:center;">
+BUFFALO
+</td>
+<td style="text-align:center;">
+NY
+</td>
+<td style="text-align:center;">
+14222
+</td>
+<td style="text-align:center;">
+NA
+</td>
+<td style="text-align:center;">
+9862
+</td>
+<td style="text-align:center;">
+112
+</td>
+<td style="text-align:center;">
+9/9/9999
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+22300
+</td>
+<td style="text-align:center;">
+110000
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+1900
+</td>
+<td style="text-align:center;">
+2076
+</td>
+<td style="text-align:center;">
+3
+</td>
+<td style="text-align:center;">
+8
+</td>
+<td style="text-align:center;">
+2
+</td>
+<td style="text-align:center;">
+4
+</td>
+<td style="text-align:center;">
+0
+</td>
+<td style="text-align:center;">
+5
+</td>
+<td style="text-align:center;">
+2.0
+</td>
+<td style="text-align:center;">
+DELAWARE
+</td>
+<td style="text-align:center;">
+District D
+</td>
+<td style="text-align:center;">
+65.01
+</td>
+<td style="text-align:center;">
+1
+</td>
+<td style="text-align:center;">
+1000
+</td>
+<td style="text-align:center;">
+Elmwood Bidwell
+</td>
+<td style="text-align:center;">
+42.92
+</td>
+<td style="text-align:center;">
+-78.88
+</td>
+<td style="text-align:center;">
+(42.9198347309033, -78.87709262249685)
 </td>
 </tr>
 </tbody>
@@ -629,25 +1952,81 @@ b
 <p>[~200 words]</p>
 <p>Tables and figures (maps and other graphics) are carefully planned to convey the results of your analysis. Intense exploration and evidence of many trials and failures. The author looked at the data in many different ways before coming to the final presentation of the data.</p>
 <p>Show tables, plots, etc. and describe them.</p>
-<pre class="r"><code>m &lt;- leaflet(data) %&gt;% 
-  addTiles() %&gt;% 
-  addCircleMarkers(~x, ~y, radius = ~size,color = ~as.factor(category)) %&gt;% 
-  addPopups(~x[2], ~y[2], &quot;Random popup&quot;)
-m  # a map with the default OSM tile layer</code></pre>
-<div class="figure">
-<div id="htmlwidget-2f2c078353289d1148be" style="width:576px;height:288px;" class="leaflet html-widget"></div>
-<script type="application/json" data-for="htmlwidget-2f2c078353289d1148be">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"http://openstreetmap.org\">OpenStreetMap<\/a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA<\/a>"}]},{"method":"addCircleMarkers","args":[[-57.3657269496471,-49.4184695743024,38.862589141354,9.51229381375015,10.5300017260015,-9.33391861617565,27.5318806618452,26.7505159880966,36.8780858069658,-13.9222906250507,-31.48083306849,51.0746548511088,59.0053492505103,37.8046750836074,-47.3879496753216,-16.4932436216623,-5.19762706942856,37.1165725775063,8.38485075160861,-4.88774975761771],[77.1811107359827,-76.6518398188055,-17.5094157736748,-114.813732253388,112.049836060032,101.459628883749,-95.9358249418437,-66.8851816188544,112.405710043386,-141.543989600614,-101.172926975414,19.6390412840992,53.6403865646571,-29.7032063361257,43.4891717601568,20.4481949284673,6.07574732042849,-9.90955187939107,-10.905840229243,124.014951875433],[10.8706779056229,8.7395691475831,7.38716861815192,7.3527047119569,6.02611693087965,8.43863118090667,18.4470650844742,14.6682069392409,18.7644830986392,7.53049470600672,9.94462831877172,16.443554754369,8.91536990995519,13.5406927461736,10.4850655863993,13.9246374054346,16.7060359800234,7.43363886023872,13.8744118157774,19.7507945424877],null,null,{"interactive":true,"className":"","stroke":true,"color":["b","c","a","b","e","e","b","c","d","b","e","d","e","d","d","a","a","a","a","c"],"weight":5,"opacity":0.5,"fill":true,"fillColor":["b","c","a","b","e","e","b","c","d","b","e","d","e","d","d","a","a","a","a","c"],"fillOpacity":0.2},null,null,null,null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]},{"method":"addPopups","args":[-49.4184695743024,-76.6518398188055,"Random popup",null,null,{"maxWidth":300,"minWidth":50,"autoPan":true,"keepInView":false,"closeButton":true,"className":""}]}],"limits":{"lat":[-57.3657269496471,59.0053492505103],"lng":[-141.543989600614,124.014951875433]}},"evals":[],"jsHooks":[]}</script>
-<p class="caption">
-Map of completely random data
-</p>
-</div>
-<pre class="r"><code>data %&gt;% 
-  ggplot(aes(x=x,y=y,col=category))+
-  geom_point()</code></pre>
+<pre class="r"><code># 2017 - 2018 Single Family Housing Price Histogram
+Plot_2017 &lt;- ggplot(data = Buffalo_17, mapping = aes(x = TOTAL.VALUE)) + 
+  geom_histogram() + xlab(&quot;Total Property Value($)&quot;) + ylab(&quot;Count&quot;) +
+  scale_fill_manual(values=&quot;lightblue&quot;) + theme_few() +
+  labs(x=&quot;Total Value($)&quot;, y=&quot;Count&quot;, title=&quot;Distribution of Buffalo Home Prices&quot;,
+       subtitle=&quot;Single Family Property Prices (2019 - 2020)&quot;, 
+       caption=&quot;Source: Buffalo Open Data&quot;) + scale_x_continuous() + scale_y_continuous()
+plot(Plot_2017)</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre class="r"><code># 2019 - 2020 Single Family Housing Price Histogram
+Plot_2019 &lt;- ggplot(data = Buffalo_20, mapping = aes(x = TOTAL.VALUE)) + 
+  geom_histogram() + xlab(&quot;Total Property Value($)&quot;) + ylab(&quot;Count&quot;) +
+  scale_fill_manual(values=&quot;lightblue&quot;) + theme_few() +
+  labs(x=&quot;Total Value($)&quot;, y=&quot;Count&quot;, title=&quot;Distribution of Buffalo Home Prices&quot;,
+       subtitle=&quot;Single Family Property Prices (2019 - 2020)&quot;, 
+       caption=&quot;Source: Buffalo Open Data&quot;) + scale_x_continuous() + scale_y_continuous()
+plot(Plot_2019)</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
-</div>
-<div id="conclusions" class="section level1">
-<h1>Conclusions</h1>
+<pre class="r"><code>#Data is transformed using Natural Log for Map Visualization
+Buffalo_17$logprice &lt;- log(Buffalo_17$TOTAL.VALUE)
+Buffalo_20$logprice &lt;- log(Buffalo_20$TOTAL.VALUE)</code></pre>
+<pre class="r"><code>#Buffalo Bounding Box
+Buffalo_bbox &lt;- Buffalo_sp@bbox
+
+# Download the basemap
+basemap &lt;- get_stamenmap(
+  bbox = Buffalo_bbox,
+  zoom = 13,
+  maptype = &quot;toner-lite&quot;)</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2300/3011.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2301/3011.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2302/3011.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2300/3012.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2301/3012.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2302/3012.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2300/3013.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2301/3013.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2302/3013.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2300/3014.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2301/3014.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2302/3014.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2300/3015.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2301/3015.png</code></pre>
+<pre><code>## Source : http://tile.stamen.com/toner-lite/13/2302/3015.png</code></pre>
+<pre class="r"><code># View Map
+BFMap &lt;- ggmap(basemap) + 
+  labs(title=&quot;Buffalo Basemap&quot;)
+BFMap</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<pre class="r"><code># 2017 - 2018 Assessment Roll Plot
+SingleFam17 &lt;- ggmap(basemap) + 
+  geom_point(data = Buffalo_17, aes(x = LONGITUDE, y = LATITUDE, color = logprice), 
+             size = .025, alpha = 0.7) +
+  scale_color_gradient(&quot;Single Family Home Price&quot;, 
+                        low = &quot;light green&quot;, high = &quot;dark green&quot;) +
+  labs(title=&quot;Distribution of Buffalo Home Prices&quot;,
+       subtitle=&quot;Property Prices (2017 - 2018)&quot;,
+       caption=&quot;Open Data Buffalo&quot;)
+SingleFam17</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<pre class="r"><code># 2019 - 2020 Assessment Roll Plot
+SingleFam20 &lt;- ggmap(basemap) + 
+  geom_point(data = Buffalo_20, aes(x = LONGITUDE, y = LATITUDE, color = logprice), 
+             size = .025, alpha = 0.7) +
+  scale_color_gradient(&quot;Single Family Home Price&quot;, 
+                       low = &quot;light green&quot;, high = &quot;dark green&quot;) +
+  labs(title=&quot;Distribution of Buffalo Home Prices&quot;,
+       subtitle=&quot;Property Prices (2019 - 2020)&quot;,
+       caption=&quot;Open Data Buffalo&quot;)
+SingleFam20</code></pre>
+<pre><code>## Warning: Removed 115 rows containing missing values (geom_point).</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-10-1.png" width="672" /> # Conclusions</p>
 <p>[~200 words]</p>
 <p>Clear summary adequately describing the results and putting them in context. Discussion of further questions and ways to continue investigation.</p>
 </div>
