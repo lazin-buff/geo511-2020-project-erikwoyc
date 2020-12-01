@@ -71,7 +71,7 @@ BFMap
 # 2017 - 2018 Assessment Roll Plot
 SingleFam17 <- ggmap(basemap) + 
   geom_point(data = Buffalo_17, aes(x = LONGITUDE, y = LATITUDE, color = logprice, 
-             size = .25, alpha = 0.6)) +
+             size = .05, alpha = 0.6)) +
   scale_fill_brewer(palette = "Greens") +
   labs(title="Distribution of Buffalo Home Prices",
        subtitle="Property Prices (2017 - 2018)",

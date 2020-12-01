@@ -43,22 +43,33 @@ Here's my first code chunk.
 Load any required packages in a code chunk (you may need to install some packages):
 
 ```{r, message=F, warning=F}
-library(tidyverse)
-library(leaflet)
-library(kableExtra)
+library(ggplot2)
+library(ggmap)
+library(maptools)
+library(ggthemes)
+library(rgeos)
+library(broom)
+library(plyr)
+library(dplyr)
+library(grid)
+library(gridExtra)
+library(reshape2)
+library(scales)
+library(sp)
+library(sf)
+library(rgdal)
 knitr::opts_chunk$set(cache=TRUE)  # cache the results for quick compiling
 ```
 
 ## Download and clean all required data
 ```{r}
-n=20
-data=data.frame(x=runif(n,-180,180),
-                y=runif(n,-60,60),
-                size = runif(n, 5, 20),
-                category = factor(
-                  sample(letters[1:5], n, replace = TRUE)
-                  ),
-                value = rnorm(n))
+# 2019 - 2020 Buffalo Assessment Roll
+Assessment <- read.csv(file = "https://github.com/geo511-2020/geo511-2020-project-erikwoyc/blob/master/2019-2020_Assessment_Roll.csv")
+
+# Neighborhood Shapefile
+Neighborhood_URL <- "https://data.buffalony.gov/api/geospatial/q9bk-zu3p?method=export&format=GeoJSON"
+Buffalo_Neighborhoods <- st_read(dsn = Neighborhood_URL)
+
 ```
 
 ```{r, results='asis'}
