@@ -1,14 +1,12 @@
 ---
-title: "My Final Project Template"
+title: "A Look at Single Family Housing Prices Across Buffalo" 
 author: Erik Woyciesjes
-subtitle: Subtitle here if desired
+subtitle: "2017 - 2020"
 ---
 
 # Introduction
 
-[~ 200 words]
-
-Clearly stated background and questions / hypotheses / problems being addressed. Sets up the analysis in an interesting and compelling way.
+The purpose of this project is to look at single family housing in the City of Buffalo. Using the assessed values of single family properties (City Assessment Rolls), this project aims to examine the spatial distribution and percent change of single family housing prices across the city of Buffalo. To extend this study, median household prices within neighborhoods will also be calculated to potentially illuminate trends in the changes in price of single family homes across neighborhoods. 
 
 # Materials and methods
 
@@ -43,6 +41,7 @@ Here's my first code chunk.
 Load any required packages in a code chunk (you may need to install some packages):
 
 ```{r, message=F, warning=F}
+library(tidyverse)
 library(ggplot2)
 library(ggmap)
 library(maptools)
@@ -58,26 +57,36 @@ library(scales)
 library(sp)
 library(sf)
 library(rgdal)
+library(RColorBrewer)
 knitr::opts_chunk$set(cache=TRUE)  # cache the results for quick compiling
 ```
 
 ## Download and clean all required data
 ```{r}
+# 2017 - 2019 Buffalo Assessment Roll
+Parcel17 <- read.csv(file = "https://raw.githubusercontent.com/geo511-2020/geo511-2020-project-erikwoyc/master/2017-2018_Assessment_Roll.csv")
+SingleFam_propclass <- c("210", "215", "240", "241", "250", "270")
+Buffalo_17 <- filter(Parcel17, PROPERTY.CLASS %in% SingleFam_propclass)
+
 # 2019 - 2020 Buffalo Assessment Roll
-Assessment <- read.csv(file = "https://github.com/geo511-2020/geo511-2020-project-erikwoyc/blob/master/2019-2020_Assessment_Roll.csv")
+Parcel20 <- read.csv(file = "https://raw.githubusercontent.com/geo511-2020/geo511-2020-project-erikwoyc/master/2019-2020_Assessment_Roll.csv")
+SingleFam_propclass <- c("210", "215", "240", "241", "250", "270")
+Buffalo_20 <- filter(Parcel20, PROPERTY.CLASS %in% SingleFam_propclass)
 
 # Neighborhood Shapefile
 Neighborhood_URL <- "https://data.buffalony.gov/api/geospatial/q9bk-zu3p?method=export&format=GeoJSON"
 Buffalo_Neighborhoods <- st_read(dsn = Neighborhood_URL)
+Buffalo_sp <- as_Spatial(Buffalo_Neighborhoods)
 
 ```
 
 ```{r, results='asis'}
-data %>% 
-  slice(1:10) %>% #show only 1:n rows
-  kable(digits=2,align="c")%>% #make table and round to two digits
+#Snapshot of Assessment Data from 2017 - 2018
+Parcel17 %>% 
+  slice(1:10) %>% 
+  kable(digits=2,align="c") %>% 
   kable_styling(bootstrap_options = 
-                  c("striped", "hover", "condensed", "responsive")) #apply other formatting
+                  c("striped", "hover", "condensed", "responsive")) 
 ```
 
 Add any additional processing steps here.
@@ -90,21 +99,76 @@ Tables and figures (maps and other graphics) are carefully planned to convey the
 
 Show tables, plots, etc. and describe them.
 
-```{r, fig.width=6, fig.height=3, fig.cap="Map of completely random data"}
-m <- leaflet(data) %>% 
-  addTiles() %>% 
-  addCircleMarkers(~x, ~y, radius = ~size,color = ~as.factor(category)) %>% 
-  addPopups(~x[2], ~y[2], "Random popup")
-m  # a map with the default OSM tile layer
+```{r}
+# 2017 - 2018 Single Family Housing Price Histogram
+Plot_2017 <- ggplot(data = Buffalo_17, mapping = aes(x = TOTAL.VALUE)) + 
+  geom_histogram() + xlab("Total Property Value($)") + ylab("Count") +
+  scale_fill_manual(values="lightblue") + theme_few() +
+  labs(x="Total Value($)", y="Count", title="Distribution of Buffalo Home Prices",
+       subtitle="Single Family Property Prices (2019 - 2020)", 
+       caption="Source: Buffalo Open Data") + scale_x_continuous() + scale_y_continuous()
+plot(Plot_2017)
 ```
 
 
 ```{r}
-data %>% 
-  ggplot(aes(x=x,y=y,col=category))+
-  geom_point()
+# 2019 - 2020 Single Family Housing Price Histogram
+Plot_2019 <- ggplot(data = Buffalo_20, mapping = aes(x = TOTAL.VALUE)) + 
+  geom_histogram() + xlab("Total Property Value($)") + ylab("Count") +
+  scale_fill_manual(values="lightblue") + theme_few() +
+  labs(x="Total Value($)", y="Count", title="Distribution of Buffalo Home Prices",
+       subtitle="Single Family Property Prices (2019 - 2020)", 
+       caption="Source: Buffalo Open Data") + scale_x_continuous() + scale_y_continuous()
+plot(Plot_2019)
 ```
 
+```{r}
+#Data is transformed using Natural Log for Map Visualization
+Buffalo_17$logprice <- log(Buffalo_17$TOTAL.VALUE)
+Buffalo_20$logprice <- log(Buffalo_20$TOTAL.VALUE)
+```
+
+```{r}
+#Buffalo Bounding Box
+Buffalo_bbox <- Buffalo_sp@bbox
+
+# Download the basemap
+basemap <- get_stamenmap(
+  bbox = Buffalo_bbox,
+  zoom = 13,
+  maptype = "toner-lite")
+
+# View Map
+BFMap <- ggmap(basemap) + 
+  labs(title="Buffalo Basemap")
+BFMap
+```
+
+```{r}
+# 2017 - 2018 Assessment Roll Plot
+SingleFam17 <- ggmap(basemap) + 
+  geom_point(data = Buffalo_17, aes(x = LONGITUDE, y = LATITUDE, color = logprice), 
+             size = .025, alpha = 0.7) +
+  scale_color_gradient("Single Family Home Price", 
+                        low = "light green", high = "dark green") +
+  labs(title="Distribution of Buffalo Home Prices",
+       subtitle="Property Prices (2017 - 2018)",
+       caption="Open Data Buffalo")
+SingleFam17
+```
+
+```{r}
+# 2019 - 2020 Assessment Roll Plot
+SingleFam20 <- ggmap(basemap) + 
+  geom_point(data = Buffalo_20, aes(x = LONGITUDE, y = LATITUDE, color = logprice), 
+             size = .025, alpha = 0.7) +
+  scale_color_gradient("Single Family Home Price", 
+                       low = "light green", high = "dark green") +
+  labs(title="Distribution of Buffalo Home Prices",
+       subtitle="Property Prices (2019 - 2020)",
+       caption="Open Data Buffalo")
+SingleFam20
+```
 # Conclusions
 
 [~200 words]

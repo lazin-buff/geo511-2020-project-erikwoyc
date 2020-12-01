@@ -17,12 +17,12 @@ library(rgdal)
 library(RColorBrewer)
 
 # 2017 - 2019 Buffalo Assessment Roll
-Parcel17 <- read.csv(file = "~/Desktop/Geo511 Spatial Data Science/geo511-2020-project-erikwoyc/2017-2018_Assessment_Roll.csv")
+Parcel17 <- read.csv(file = "https://raw.githubusercontent.com/geo511-2020/geo511-2020-project-erikwoyc/master/2017-2018_Assessment_Roll.csv")
 SingleFam_propclass <- c("210", "215", "240", "241", "250", "270")
 Buffalo_17 <- filter(Parcel17, PROPERTY.CLASS %in% SingleFam_propclass)
 
 # 2019 - 2020 Buffalo Assessment Roll
-Parcel20 <- read.csv(file = "~/Desktop/Geo511 Spatial Data Science/geo511-2020-project-erikwoyc/2019-2020_Assessment_Roll.csv")
+Parcel20 <- read.csv(file = "https://raw.githubusercontent.com/geo511-2020/geo511-2020-project-erikwoyc/master/2019-2020_Assessment_Roll.csv")
 SingleFam_propclass <- c("210", "215", "240", "241", "250", "270")
 Buffalo_20 <- filter(Parcel20, PROPERTY.CLASS %in% SingleFam_propclass)
 
@@ -70,9 +70,10 @@ BFMap
 
 # 2017 - 2018 Assessment Roll Plot
 SingleFam17 <- ggmap(basemap) + 
-  geom_point(data = Buffalo_17, aes(x = LONGITUDE, y = LATITUDE, color = logprice, 
-             size = .05, alpha = 0.6)) +
-  scale_fill_brewer(palette = "Greens") +
+  geom_point(data = Buffalo_17, aes(x = LONGITUDE, y = LATITUDE, color = logprice), 
+             size = .025, alpha = 0.7) +
+  scale_color_gradient("Single Family Home Price", 
+                        low = "light green", high = "dark green") +
   labs(title="Distribution of Buffalo Home Prices",
        subtitle="Property Prices (2017 - 2018)",
        caption="Open Data Buffalo")
@@ -80,9 +81,10 @@ SingleFam17
 
 # 2019 - 2020 Assessment Roll Plot
 SingleFam20 <- ggmap(basemap) + 
-  geom_point(data = Buffalo_20, aes(x = LONGITUDE, y = LATITUDE, color = logprice, 
-             size = .25, alpha = 0.6)) +
-  scale_fill_brewer(palette = "Greens") +
+  geom_point(data = Buffalo_20, aes(x = LONGITUDE, y = LATITUDE, color = logprice), 
+             size = .025, alpha = 0.7) +
+  scale_color_gradient("Single Family Home Price", 
+                       low = "light green", high = "dark green") +
   labs(title="Distribution of Buffalo Home Prices",
        subtitle="Property Prices (2019 - 2020)",
        caption="Open Data Buffalo")
