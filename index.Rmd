@@ -168,6 +168,11 @@ SingleFam20 <- ggmap(basemap) +
        subtitle="Property Prices (2019 - 2020)",
        caption="Open Data Buffalo")
 SingleFam20
+
+#I dont know if its possible but putting in a third map that shows where values have appreciated / depreciated would help to inform the actual changes going on in Buffalo home prices. Marko Lazin
+#logprice makes sense mathematically but if possible try to make legend reflect original price scale, as information is lost. Marko Lazin
+#rather than running two separate maps you might be able to get away with running a few selected facets. Marko Lazin
+#the similarity of the greens for the logprice make the subtleties hard to see without a zoom - id either add a zoom function to you rmaps or make the gradient a little bit more dramatic. Marko Lazin
 ```
 # Conclusions
 
